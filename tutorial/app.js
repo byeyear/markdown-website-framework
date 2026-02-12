@@ -3,11 +3,12 @@ const siteConfig = {
         'llm': {
             title: 'LLM原理',
             items: [
-                { id: 'llm-intro', title: 'LLM概述', file: 'content/llm/intro.md' },
-                { id: 'llm-transformer', title: 'Transformer架构', file: 'content/llm/transformer.md' },
-                { id: 'llm-attention', title: '注意力机制', file: 'content/llm/attention.md' },
-                { id: 'llm-training', title: '训练过程', file: 'content/llm/training.md' },
-                { id: 'llm-finetune', title: '微调技术', file: 'content/llm/finetune.md' }
+                { id: 'llm-text-representation', title: '文本的数学表示与编码', file: 'content/llm/text-representation.md' },
+                { id: 'llm-attention-mechanism', title: '注意力机制的原理剖析', file: 'content/llm/attention-mechanism.md' },
+                { id: 'llm-transformer-architecture', title: 'Transformer架构深度解析', file: 'content/llm/transformer-architecture.md' },
+                { id: 'llm-pretraining', title: '大规模预训练的原理', file: 'content/llm/pretraining.md' },
+                { id: 'llm-generative-inference', title: '生成式推理的数学原理', file: 'content/llm/generative-inference.md' },
+                { id: 'llm-emergence', title: '模型能力涌现的机制', file: 'content/llm/emergence.md' }
             ]
         },
         'ai-programming': {
@@ -114,8 +115,117 @@ async function loadContent(filePath) {
         
         const markdownText = await response.text();
         
-        const htmlContent = marked.parse(markdownText);
-        contentArea.innerHTML = htmlContent;
+        const mathPlaceholders = [];
+        let placeholderIndex = 0;
+        
+        // 处理块级LaTeX公式 $$...$$
+        const protectedMarkdown = markdownText.replace(/\$\$[\s\S]*?\$\$/g, (match) => {
+            const placeholder = `MATHBLOCK${placeholderIndex}PLACEHOLDER`;
+            mathPlaceholders.push({ placeholder, original: match });
+            placeholderIndex++;
+            return placeholder;
+        });
+        
+        // 使用改进的字符遍历方法处理行内LaTeX公式 $...$，正确处理大括号嵌套
+        // 并确保不会处理已经被块级公式占位符替代的部分
+        let protectedMarkdown2 = '';
+        let insideFormula = false;
+        let currentFormula = '';
+        let braceDepth = 0;
+        
+        for (let j = 0; j < protectedMarkdown.length; j++) {
+            const char = protectedMarkdown[j];
+            
+            // 检查是否是占位符的一部分，如果是则直接添加
+            if (char === 'M' && protectedMarkdown.substr(j, 9) === 'MATHBLOCK') {
+                // 这是一个块级公式占位符，直接添加到结果中
+                let endPlaceholderPos = protectedMarkdown.indexOf('PLACEHOLDER', j);
+                if (endPlaceholderPos !== -1) {
+                    endPlaceholderPos += 9; // 'PLACEHOLDER'.length
+                    protectedMarkdown2 += protectedMarkdown.substring(j, endPlaceholderPos);
+                    j = endPlaceholderPos - 1; // -1是因为for循环会自动+1
+                    continue;
+                }
+            }
+            
+            const nextChar = j + 1 < protectedMarkdown.length ? protectedMarkdown[j + 1] : '';
+            
+            if (char === '\\' && (nextChar === '{' || nextChar === '}' || nextChar === '$')) {
+                // 转义字符，作为一个整体处理
+                if (insideFormula) {
+                    currentFormula += char + nextChar;
+                    j++; // 跳过下一个字符
+                } else {
+                    protectedMarkdown2 += char + nextChar;
+                    j++; // 跳过下一个字符
+                }
+                continue;
+            }
+            
+            if (char === '$' && !insideFormula) {
+                // 开始一个新的行内公式
+                insideFormula = true;
+                currentFormula = char;
+                braceDepth = 0;
+            } else if (char === '$' && insideFormula) {
+                // 结束当前行内公式 - 只有当大括号平衡时才结束
+                if (braceDepth === 0) {
+                    currentFormula += char;
+                    
+                    const placeholder = `MATHINLINE${placeholderIndex}PLACEHOLDER`;
+                    mathPlaceholders.push({ placeholder, original: currentFormula });
+                    protectedMarkdown2 += placeholder;
+                    placeholderIndex++;
+                    
+                    insideFormula = false;
+                    currentFormula = '';
+                } else {
+                    // 大括号不平衡，继续当前公式
+                    currentFormula += char;
+                }
+            } else if (insideFormula) {
+                currentFormula += char;
+                if (char === '{') {
+                    braceDepth++;
+                } else if (char === '}') {
+                    braceDepth--;
+                }
+            } else {
+                protectedMarkdown2 += char;
+            }
+        }
+        
+        // 添加剩余的非公式内容
+        if (currentFormula && insideFormula) {
+            protectedMarkdown2 += currentFormula; // 如果公式未闭合，按普通文本处理
+        }
+        
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            mangle: false
+        });
+        
+        const htmlContent = marked.parse(protectedMarkdown2);
+        
+        let processedHtml = htmlContent;
+        mathPlaceholders.forEach(({ placeholder, original }) => {
+            // 转义占位符中的特殊正则表达式字符
+            const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // 对原始公式中的HTML特殊字符进行转义，防止被解析为HTML标签
+            const escapedOriginal = original
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            processedHtml = processedHtml.replace(new RegExp(escapedPlaceholder, 'g'), escapedOriginal);
+        });
+        
+        contentArea.innerHTML = processedHtml;
+        
+        renderLaTeX(contentArea);
+        renderMermaid(contentArea);
         
     } catch (error) {
         console.error('加载内容失败:', error);
@@ -125,6 +235,32 @@ async function loadContent(filePath) {
             <p>错误信息：${error.message}</p>
         `;
     }
+}
+
+function renderLaTeX(container) {
+    renderMathInElement(container, {
+        delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+        ],
+        throwOnError: false
+    });
+}
+
+function renderMermaid(container) {
+    const mermaidElements = container.querySelectorAll('code');
+    mermaidElements.forEach(element => {
+        const code = element.textContent;
+        if (code.trim().startsWith('mermaid')) {
+            const mermaidCode = code.replace(/^mermaid\n/, '');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mermaid';
+            wrapper.textContent = mermaidCode.trim();
+            element.parentNode.replaceChild(wrapper, element);
+        }
+    });
+    
+    mermaid.init(undefined, container.querySelectorAll('.mermaid'));
 }
 
 function addMenu(menuKey, menuData) {
