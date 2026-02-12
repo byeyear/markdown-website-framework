@@ -60,13 +60,6 @@ function selectMainMenu(menuKey, element) {
     if (firstSubMenu) {
         firstSubMenu.click();
     }
-    
-    if (window.innerWidth <= 768) {
-        const sidebar = document.querySelector('.sidebar');
-        const overlay = document.getElementById('overlay');
-        sidebar.classList.add('active');
-        overlay.classList.add('active');
-    }
 }
 
 function renderSubMenu(menuKey) {
@@ -188,7 +181,7 @@ function initMobileMenu() {
     const mainMenuItems = document.querySelectorAll('#main-menu li');
     mainMenuItems.forEach(item => {
         item.addEventListener('click', function() {
-            if (window.innerWidth > 768) {
+            if (window.innerWidth <= 768) {
                 menuToggle.classList.remove('active');
                 mainNav.classList.remove('active');
                 overlay.classList.remove('active');
