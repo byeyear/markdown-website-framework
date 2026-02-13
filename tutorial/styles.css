@@ -122,6 +122,87 @@ body {
     list-style: none;
 }
 
+/* 一级菜单项容器 */
+.menu-item {
+    margin-bottom: 5px;
+}
+
+/* 一级菜单标题（可展开/收缩） */
+.menu-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px 12px 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #333;
+    font-size: 14px;
+    font-weight: 500;
+    border-left: 3px solid transparent;
+}
+
+.menu-header:hover {
+    background-color: #f0f0f0;
+    color: #667eea;
+}
+
+.menu-header.expanded {
+    background-color: #f8f8f8;
+    color: #667eea;
+    border-left-color: #667eea;
+}
+
+/* 展开/收缩图标 */
+.toggle-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    font-size: 10px;
+    color: #999;
+    transition: all 0.3s ease;
+    text-align: center;
+    line-height: 16px;
+}
+
+.menu-header:hover .toggle-icon,
+.menu-header.expanded .toggle-icon {
+    color: #667eea;
+}
+
+.menu-title {
+    flex: 1;
+}
+
+/* 子菜单列表 */
+.sub-items {
+    list-style: none;
+    background-color: #fafafa;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.sub-items li {
+    padding: 10px 20px 10px 40px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+    color: #666;
+    font-size: 13px;
+}
+
+.sub-items li:hover {
+    background-color: #f0f0f0;
+    color: #667eea;
+}
+
+.sub-items li.active {
+    background-color: #f0f4ff;
+    color: #667eea;
+    border-left-color: #667eea;
+    font-weight: 500;
+}
+
+/* 兼容旧样式 */
 .sidebar li {
     padding: 12px 25px;
     cursor: pointer;
@@ -253,6 +334,10 @@ body {
 @media (max-width: 768px) {
     .menu-toggle {
         display: flex;
+    }
+    
+    .main-container {
+        display: block;
     }
     
     .main-nav {

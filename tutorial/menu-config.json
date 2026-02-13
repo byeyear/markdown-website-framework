@@ -1,0 +1,44 @@
+{
+  "menuConfig": {
+    "llm": {
+      "title": "LLM原理",
+      "order": 1
+    },
+    "ai-programming": {
+      "title": "AI编程",
+      "order": 2
+    }
+  },
+  "fileTitleMap": {
+    "intro": "LLM概述",
+    "text-representation": "文本的数学表示与编码",
+    "attention-mechanism": "注意力机制的原理剖析",
+    "transformer-architecture": "Transformer架构深度解析",
+    "pretraining": "大规模预训练的原理",
+    "generative-inference": "生成式推理的数学原理",
+    "emergence": "模型能力涌现的机制",
+    "prompt": "提示工程",
+    "api": "API调用",
+    "rag": "RAG应用",
+    "agent": "智能体开发",
+    "best-practices": "最佳实践"
+  },
+  "fileOrder": {
+    "llm": {
+      "intro": 1,
+      "text-representation": 2,
+      "attention-mechanism": 3,
+      "transformer-architecture": 4,
+      "pretraining": 5,
+      "generative-inference": 6,
+      "emergence": 7
+    },
+    "ai-programming": {
+      "prompt": 1,
+      "api": 2,
+      "rag": 3,
+      "agent": 4,
+      "best-practices": 5
+    }
+  }
+}

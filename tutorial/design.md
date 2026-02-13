@@ -13,6 +13,7 @@
 
 ### 1.2 核心功能
 - 双级导航系统（主导航 + 子菜单）
+- 文档标题导航（二级子菜单）
 - Markdown内容动态加载与渲染
 - 响应式布局（桌面端/移动端）
 - 移动端侧滑菜单
@@ -27,7 +28,8 @@ Header (固定顶部)
 
 Main Container
 ├─ Sidebar (左侧边栏/移动端侧滑)
-│  └─ 子菜单
+│  └─ 子菜单（可展开/收缩）
+│     └─ 文档标题导航（二级子菜单）
 └─ Content Area (内容区)
    └─ Markdown渲染内容
 ```
@@ -39,30 +41,29 @@ Main Container
 ## 三、导航系统
 
 ### 3.1 主导航菜单
-配置位于`app.js`的`siteConfig.menus`，支持动态扩展。
+配置位于`menu-config.json`，支持动态扩展。
 
-```javascript
-{
-  'llm': {
-    title: 'LLM原理',
-    items: [
-      { id: 'llm-intro', title: 'LLM概述', file: 'content/llm/intro.md' }
-    ]
-  }
-}
-```
+当前菜单结构：
+- **LLM原理**：LLM概述、文本的数学表示与编码、注意力机制的原理剖析、Transformer架构深度解析、大规模预训练的原理、生成式推理的数学原理、模型能力涌现的机制
+- **AI编程**：提示工程
 
-### 3.2 交互行为
+### 3.2 子菜单
+- 根据选中的主导航动态生成
+- 支持展开/收缩功能
+- 点击加载对应的Markdown文件
+- 移动端点击后自动关闭侧边栏
+- 活动项显示左侧边框和背景色
+
+### 3.3 文档标题导航（二级子菜单）
+- 自动解析Markdown文件中的二级标题（##）
+- 作为二级子菜单展示
+- 点击可跳转到对应标题位置（锚点跳转）
+
+### 3.4 交互行为
 - 点击主导航项 → 加载对应子菜单和默认内容
 - 默认选中第一个主导航项和第一个子菜单项
 - **移动端**：点击主导航项后直接展示内容，不自动弹出子菜单
 - 桌面端活动状态显示底部边框
-
-### 3.3 子菜单
-- 根据选中的主导航动态生成
-- 点击加载对应的Markdown文件
-- 移动端点击后自动关闭侧边栏
-- 活动项显示左侧边框和背景色
 
 ## 四、内容展示
 
@@ -76,54 +77,59 @@ Main Container
 - 加载失败显示错误信息
 - 文件不存在显示"内容准备中"
 
+### 4.3 数学公式渲染（KaTeX）
+- **库**：KaTeX v0.16.9
+- **支持语法**：
+  - 行内公式：`$E=mc^2$`
+  - 块级公式：`$$...$$`
+- **特性**：
+  - 支持复杂的LaTeX数学公式
+  - 正确处理大括号嵌套和转义字符
+  - 使用占位符机制防止与Markdown解析冲突
+  - 自动转义HTML特殊字符防止XSS攻击
+
+### 4.4 图表渲染（Mermaid）
+- **库**：Mermaid v10.6.1
+- **支持图表类型**：流程图、时序图、类图、状态图、甘特图、饼图
+- **语法**：使用```mermaid代码块包裹图表代码
+- **样式**：图表居中显示，带有浅灰色背景和圆角边框
+
 ## 五、技术架构
 
 ### 5.1 技术栈
 - **HTML5**：语义化标签
 - **CSS3**：Flexbox布局，媒体查询
 - **JavaScript (ES6+)**：原生JS，无框架依赖
-- **第三方库**：marked.js（Markdown解析）
+- **第三方库**：
+  - marked.js v9.1.6（Markdown解析）
+  - KaTeX v0.16.9（LaTeX数学公式渲染）
+  - Mermaid v10.6.1（图表渲染）
 
 ### 5.2 文件结构
 ```
 tutorial/
 ├── index.html              # 主页面
 ├── styles.css              # 样式文件
-├── app.js                 # JavaScript逻辑
-└── content/               # Markdown内容目录
-    ├── llm/              # LLM原理内容
-    └── ai-programming/    # AI编程内容
+├── app.js                  # JavaScript逻辑
+├── menu-config.json        # 菜单配置文件
+└── content/                # Markdown内容目录
+    ├── llm/                # LLM原理内容
+    │   ├── intro.md
+    │   ├── text-representation.md
+    │   ├── attention-mechanism.md
+    │   ├── transformer-architecture.md
+    │   ├── pretraining.md
+    │   ├── generative-inference.md
+    │   └── emergence.md
+    └── ai-programming/     # AI编程内容
+        └── prompt.md
 ```
 
-### 5.3 JavaScript核心函数
-
-| 函数名 | 功能 |
-|--------|------|
-| `initMainMenu()` | 初始化主导航事件 |
-| `selectMainMenu()` | 选择主导航项 |
-| `renderSubMenu()` | 渲染子菜单 |
-| `selectSubMenu()` | 选择子菜单项 |
-| `loadContent()` | 加载Markdown内容 |
-| `initMobileMenu()` | 初始化移动端菜单 |
-
-### 5.4 扩展机制
-
-```javascript
-// 添加新菜单
-addMenu('new-menu', {
-  title: '新菜单',
-  items: [
-    { id: 'item1', title: '子菜单1', file: 'content/new-menu/item1.md' }
-  ]
-});
-
-// 添加子菜单项
-addSubMenu('llm', {
-  id: 'new-item',
-  title: '新内容',
-  file: 'content/llm/new-item.md'
-});
-```
+### 5.3 菜单配置
+菜单通过`menu-config.json`配置，包含：
+- `menuConfig`：主导航配置（标题、排序）
+- `fileTitleMap`：文件名到标题的映射
+- `fileOrder`：文件排序配置
 
 ## 六、样式规范
 
@@ -152,14 +158,14 @@ addSubMenu('llm', {
 
 ### 8.1 添加新内容
 1. 在`content/`对应目录下创建`.md`文件
-2. 在`app.js`的`siteConfig`中添加菜单项
+2. 在`menu-config.json`中添加文件标题映射和排序
 3. 刷新页面即可
 
 ### 8.2 修改样式
 编辑`styles.css`，使用CSS变量便于主题定制。
 
-### 8.3 修改布局
-编辑`index.html`调整HTML结构，编辑`app.js`调整交互逻辑。
+### 8.3 修改菜单结构
+编辑`menu-config.json`调整菜单配置，无需修改JavaScript代码。
 
 ## 九、部署
 
@@ -171,27 +177,3 @@ python -m http.server 3000
 
 ### 9.2 服务器部署
 静态文件部署至Web服务器（Nginx/Apache），配置适当的缓存策略。
-
-### 9.3 Nginx配置建议
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /var/www/html;
-    index index.html;
-    
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
-    
-    location / {
-        try_files $uri $uri/ =404;
-    }
-}
-```
-
-## 十、未来扩展
-
-- 搜索功能
-- 深色模式
-- 静态站点生成器集成（Hugo/Jekyll）
-- CI/CD自动部署
