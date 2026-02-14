@@ -5,6 +5,71 @@ import { cacheUtil, CACHE_CONFIG } from './cache.js';
 import { addHeadingIds, generateId } from './utils.js';
 
 let mermaidLoaded = false;
+let markedLoaded = false;
+
+function showLoadingProgress(text = '正在加载资源...', progress = 0) {
+    const loadingProgress = document.getElementById('loading-progress');
+    const loadingText = document.getElementById('loading-text');
+    const loadingProgressBar = document.getElementById('loading-progress-bar');
+    
+    if (loadingProgress) {
+        loadingProgress.style.display = 'block';
+    }
+    if (loadingText) {
+        loadingText.textContent = text;
+    }
+    if (loadingProgressBar) {
+        loadingProgressBar.style.width = `${progress}%`;
+    }
+}
+
+function hideLoadingProgress() {
+    const loadingProgress = document.getElementById('loading-progress');
+    if (loadingProgress) {
+        loadingProgress.style.display = 'none';
+    }
+}
+
+function updateLoadingProgress(text, progress) {
+    const loadingText = document.getElementById('loading-text');
+    const loadingProgressBar = document.getElementById('loading-progress-bar');
+    
+    if (loadingText) {
+        loadingText.textContent = text;
+    }
+    if (loadingProgressBar) {
+        loadingProgressBar.style.width = `${progress}%`;
+    }
+}
+
+export { updateLoadingProgress, hideLoadingProgress };
+
+async function loadMarked() {
+    if (markedLoaded) return;
+    
+    if (typeof window.marked !== 'undefined') {
+        markedLoaded = true;
+        return;
+    }
+    
+    showLoadingProgress('正在加载 Markdown 解析库...', 30);
+    
+    await new Promise((resolve, reject) => {
+        const checkInterval = setInterval(() => {
+            if (typeof window.marked !== 'undefined') {
+                clearInterval(checkInterval);
+                markedLoaded = true;
+                updateLoadingProgress('Markdown 解析库加载完成', 60);
+                resolve();
+            }
+        }, 50);
+        
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            reject(new Error('marked 库加载超时'));
+        }, 10000);
+    });
+}
 
 async function loadMermaid() {
     if (mermaidLoaded) return;
@@ -32,6 +97,10 @@ async function loadMermaid() {
 
 // 渲染内容的通用函数
 export async function renderContent(contentArea, markdownText, headingId = '') {
+    await loadMarked();
+    
+    updateLoadingProgress('正在解析 Markdown 内容...', 70);
+    
     const mathPlaceholders = [];
     let placeholderIndex = 0;
     
@@ -140,12 +209,21 @@ export async function renderContent(contentArea, markdownText, headingId = '') {
     
     contentArea.innerHTML = processedHtml;
     
+    updateLoadingProgress('正在渲染 LaTeX 公式...', 80);
+    
     // 为标题添加 ID，便于锚点跳转（在内容加载后立即添加）
     addHeadingIds(contentArea, currentFileHeadings);
     
     // 先渲染 LaTeX，因为公式渲染会改变 DOM 结构
     renderLaTeX(contentArea);
+    
+    updateLoadingProgress('正在渲染图表...', 90);
     await renderMermaid(contentArea);
+    
+    updateLoadingProgress('加载完成', 100);
+    setTimeout(() => {
+        hideLoadingProgress();
+    }, 300);
     
     // 如果有指定标题，滚动到对应位置（在所有渲染完成后执行）
     if (headingId) {
@@ -186,11 +264,13 @@ export async function loadContent(filePath, headingId = '') {
     }
     
     contentArea.innerHTML = '<div class="loading">加载中...</div>';
+    showLoadingProgress('正在加载内容文件...', 10);
     
     try {
         const response = await fetch(filePath);
         
         if (!response.ok) {
+            hideLoadingProgress();
             contentArea.innerHTML = `
                 <h1>内容准备中</h1>
                 <p>该部分内容正在编写中，敬请期待...</p>
@@ -199,6 +279,7 @@ export async function loadContent(filePath, headingId = '') {
             return;
         }
         
+        updateLoadingProgress('正在读取文件内容...', 20);
         const markdownText = await response.text();
         
         // 缓存从服务器加载的内容
@@ -208,12 +289,28 @@ export async function loadContent(filePath, headingId = '') {
         await renderContent(contentArea, markdownText, headingId);
         
     } catch (error) {
+        hideLoadingProgress();
         console.error('加载内容失败:', error);
         contentArea.innerHTML = `
             <h1>加载失败</h1>
             <p>无法加载内容，请稍后重试。</p>
             <p>错误信息：${error.message}</p>
         `;
+    }
+}
+
+// 加载菜单标题（独立的进度条控制）
+export async function loadMenuHeadings(filePath) {
+    showLoadingProgress('正在加载菜单结构...', 10);
+    
+    try {
+        const headings = await parseMarkdownHeadings(filePath);
+        hideLoadingProgress();
+        return headings;
+    } catch (error) {
+        hideLoadingProgress();
+        console.error('加载菜单标题失败:', error);
+        return [];
     }
 }
 
@@ -266,10 +363,26 @@ export async function renderMermaid(container) {
 // 解析 Markdown 文件的标题结构（只解析一级标题 ##）
 export async function parseMarkdownHeadings(filePath) {
     try {
-        const response = await fetch(filePath);
-        if (!response.ok) return [];
+        let text;
         
-        const text = await response.text();
+        // 先检查缓存
+        const cacheKey = `${CACHE_CONFIG.content}_${filePath}`;
+        const cachedContent = cacheUtil.get(cacheKey);
+        
+        if (cachedContent) {
+            console.log('使用缓存的内容解析标题:', filePath);
+            text = cachedContent;
+        } else {
+            // 缓存中没有，fetch 文件
+            const response = await fetch(filePath);
+            if (!response.ok) return [];
+            
+            text = await response.text();
+            
+            // 将内容缓存起来，避免重复传输
+            cacheUtil.set(cacheKey, text);
+        }
+        
         const headings = [];
         const lines = text.split('\n');
         

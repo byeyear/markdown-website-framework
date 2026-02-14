@@ -2,7 +2,7 @@
 
 import { menuConfig, fileTitleMap, fileOrder, currentMenu, currentSubMenu, menuDataCache, currentFileHeadings, currentFilePath, setCurrentMenu, setCurrentSubMenu, setCurrentFileHeadings, setCurrentFilePath } from './core.js';
 import { cacheUtil, CACHE_CONFIG } from './cache.js';
-import { parseMarkdownHeadings, loadContent } from './content.js';
+import { parseMarkdownHeadings, loadContent, loadMenuHeadings } from './content.js';
 
 // 扫描 content 文件夹生成菜单数据
 export async function generateMenuData() {
@@ -15,42 +15,22 @@ export async function generateMenuData() {
     
     const menus = {};
     
-    try {
-        // 获取 content 目录下的所有文件夹
-        const contentResponse = await fetch('content/');
-        if (!contentResponse.ok) {
-            // 如果无法获取目录列表，使用预定义的文件夹列表
-            const folders = ['llm', 'ai-programming'];
-            for (const folder of folders) {
-                const menuData = await scanFolder(folder);
-                if (menuData) {
-                    menus[folder] = menuData;
-                }
-            }
-        } else {
-            // 如果能获取目录列表，动态扫描
-            const folders = ['llm', 'ai-programming'];
-            for (const folder of folders) {
-                const menuData = await scanFolder(folder);
-                if (menuData) {
-                    menus[folder] = menuData;
-                }
-            }
+    // 从 menuConfig 动态获取文件夹列表
+    const folders = Object.keys(menuConfig);
+    for (const folder of folders) {
+        const menuData = await scanFolder(folder);
+        if (menuData) {
+            menus[folder] = menuData;
         }
-        
-        // 缓存菜单数据
-        cacheUtil.set(CACHE_CONFIG.menuData, menus);
-        
-    } catch (error) {
-        console.error('生成菜单数据失败:', error);
-        // 使用默认配置作为后备
-        return getDefaultMenuData();
     }
+    
+    // 缓存菜单数据
+    cacheUtil.set(CACHE_CONFIG.menuData, menus);
     
     return menus;
 }
 
-// 扫描单个文件夹
+// 扫描单个文件夹（首次加载不解析标题）
 export async function scanFolder(folderName) {
     const folderConfig = menuConfig[folderName] || { title: folderName, order: 999 };
     const items = [];
@@ -65,24 +45,14 @@ export async function scanFolder(folderName) {
         id: `${folderName}-${key}`,
         title: fileTitleMap[key],
         file: `content/${folderName}/${key}.md`,
-        order: folderFileOrder[key] || 999
+        order: folderFileOrder[key] || 999,
+        headings: null,  // 首次加载不解析标题
+        headingsLoaded: false  // 标记标题是否已加载
     }));
     
-    for (const fileInfo of filesToCheck) {
-        try {
-            const response = await fetch(fileInfo.file, { method: 'HEAD' });
-            if (response.ok) {
-                // 文件存在，解析标题结构
-                const headings = await parseMarkdownHeadings(fileInfo.file);
-                items.push({
-                    ...fileInfo,
-                    headings: headings
-                });
-            }
-        } catch (error) {
-            // 文件不存在，跳过
-        }
-    }
+    // 直接使用配置中的文件，不检查文件是否存在
+    // 文件不存在的情况会在用户点击时处理
+    items.push(...filesToCheck);
     
     // 按 order 排序
     items.sort((a, b) => a.order - b.order);
@@ -96,42 +66,6 @@ export async function scanFolder(folderName) {
         order: folderConfig.order,
         items: items
     };
-}
-
-// 默认菜单数据（后备方案）
-export function getDefaultMenuData() {
-    const defaultMenus = {};
-    
-    // 使用 menuConfig 构建默认菜单结构
-    Object.keys(menuConfig).forEach(folderName => {
-        const config = menuConfig[folderName];
-        const folderFileOrder = fileOrder[folderName] || {};
-        const items = [];
-        
-        // 根据 fileOrder 构建 items
-        Object.keys(folderFileOrder).forEach(fileKey => {
-            if (fileTitleMap[fileKey]) {
-                items.push({
-                    id: `${folderName}-${fileKey}`,
-                    title: fileTitleMap[fileKey],
-                    file: `content/${folderName}/${fileKey}.md`,
-                    order: folderFileOrder[fileKey],
-                    headings: []
-                });
-            }
-        });
-        
-        // 按 order 排序
-        items.sort((a, b) => a.order - b.order);
-        
-        defaultMenus[folderName] = {
-            title: config.title,
-            order: config.order,
-            items: items
-        };
-    });
-    
-    return defaultMenus;
 }
 
 // 渲染主导航菜单
@@ -228,8 +162,37 @@ export function renderSubMenu(menuKey) {
         }
         
         // 展开/收缩功能，同时点击标题也加载文件
-        menuHeader.addEventListener('click', function() {
+        menuHeader.addEventListener('click', async function() {
             const isExpanded = menuHeader.classList.contains('expanded');
+            
+            // 如果标题还未加载，动态加载标题
+            if (!item.headingsLoaded && !isExpanded) {
+                try {
+                    item.headings = await loadMenuHeadings(item.file);
+                    item.headingsLoaded = true;
+                    
+                    // 清空并重新填充子菜单
+                    subItemsContainer.innerHTML = '';
+                    
+                    if (item.headings && item.headings.length > 0) {
+                        item.headings.forEach(heading => {
+                            const li = document.createElement('li');
+                            li.textContent = heading.title;
+                            li.setAttribute('data-id', item.id);
+                            li.setAttribute('data-file', item.file);
+                            li.setAttribute('data-heading', heading.id);
+                            
+                            li.addEventListener('click', function() {
+                                selectSubMenu(item.id, item.file, heading.id, this);
+                            });
+                            
+                            subItemsContainer.appendChild(li);
+                        });
+                    }
+                } catch (error) {
+                    console.error('加载标题失败:', error);
+                }
+            }
             
             // 存储当前文件的标题数据和路径
             setCurrentFileHeadings(item.headings || []);
@@ -246,6 +209,22 @@ export function renderSubMenu(menuKey) {
                 if (sidebar) sidebar.classList.remove('active');
                 if (overlay) overlay.classList.remove('active');
             }
+            
+            // 收缩其他所有展开的菜单
+            const allMenuHeaders = document.querySelectorAll('.menu-header');
+            allMenuHeaders.forEach(header => {
+                if (header !== menuHeader) {
+                    const isOtherExpanded = header.classList.contains('expanded');
+                    if (isOtherExpanded) {
+                        const otherToggleIcon = header.querySelector('.toggle-icon');
+                        const otherSubItemsContainer = header.nextElementSibling;
+                        
+                        header.classList.remove('expanded');
+                        otherToggleIcon.innerHTML = '▶';
+                        otherSubItemsContainer.style.display = 'none';
+                    }
+                }
+            });
             
             // 移除其他所有活动状态
             document.querySelectorAll('#sub-menu li').forEach(li => {
@@ -270,13 +249,47 @@ export function renderSubMenu(menuKey) {
         
         // 默认加载第一个文件并展开
         if (index === 0) {
-            setCurrentSubMenu(item.id);
-            setCurrentFileHeadings(item.headings || []);
-            setCurrentFilePath(item.file);
-            loadContent(item.file, '');
-            menuHeader.classList.add('active');
+            // 异步加载第一个文件的标题
+            loadHeadingsForFirstItem(item, subItemsContainer, menuHeader, toggleIcon).then(() => {
+                setCurrentSubMenu(item.id);
+                setCurrentFileHeadings(item.headings || []);
+                setCurrentFilePath(item.file);
+                loadContent(item.file, '');
+                menuHeader.classList.add('active');
+            });
         }
     });
+}
+
+// 异步加载第一个文件的标题
+async function loadHeadingsForFirstItem(item, subItemsContainer, menuHeader, toggleIcon) {
+    if (!item.headingsLoaded) {
+        try {
+            item.headings = await loadMenuHeadings(item.file);
+            item.headingsLoaded = true;
+            
+            // 清空并重新填充子菜单
+            subItemsContainer.innerHTML = '';
+            
+            if (item.headings && item.headings.length > 0) {
+                item.headings.forEach(heading => {
+                    const li = document.createElement('li');
+                    li.textContent = heading.title;
+                    li.setAttribute('data-id', item.id);
+                    li.setAttribute('data-file', item.file);
+                    li.setAttribute('data-heading', heading.id);
+                    
+                    li.addEventListener('click', function() {
+                        selectSubMenu(item.id, item.file, heading.id, this);
+                    });
+                    
+                    subItemsContainer.appendChild(li);
+                });
+            }
+        } catch (error) {
+            console.error('加载标题失败:', error);
+        }
+    }
 }
 
 // 选择子菜单
