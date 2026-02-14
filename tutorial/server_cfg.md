@@ -62,7 +62,8 @@ SSH的ChrootDirectory有严格的安全要求：
 └── html/            # webdeploy:www-data, 770 (用户可写)
     ├── index.html
     ├── styles.css
-    ├── app.js
+    ├── js/
+    ├── menu-config.json
     └── content/
 ```
 

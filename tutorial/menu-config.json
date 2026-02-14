@@ -17,11 +17,7 @@
     "pretraining": "大规模预训练的原理",
     "generative-inference": "生成式推理的数学原理",
     "emergence": "模型能力涌现的机制",
-    "prompt": "提示工程",
-    "api": "API调用",
-    "rag": "RAG应用",
-    "agent": "智能体开发",
-    "best-practices": "最佳实践"
+    "prompt": "提示工程"
   },
   "fileOrder": {
     "llm": {
@@ -34,11 +30,7 @@
       "emergence": 7
     },
     "ai-programming": {
-      "prompt": 1,
-      "api": 2,
-      "rag": 3,
-      "agent": 4,
-      "best-practices": 5
+      "prompt": 1
     }
   }
 }
