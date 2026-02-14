@@ -74,6 +74,21 @@ async function loadMarked() {
 async function loadMermaid() {
     if (mermaidLoaded) return;
     
+    // 检查是否已经预加载
+    if (typeof mermaid !== 'undefined') {
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: true, htmlLabels: true },
+            sequence: { showSequenceNumbers: true },
+            throwOnError: false
+        });
+        mermaidLoaded = true;
+        return;
+    }
+    
+    // 如果未预加载，则动态加载
     const script = document.createElement('script');
     script.src = 'libs/mermaid.min.js';
     document.head.appendChild(script);
@@ -91,7 +106,17 @@ async function loadMermaid() {
             mermaidLoaded = true;
             resolve();
         };
-        script.onerror = reject;
+        script.onerror = () => {
+            console.error('Mermaid库加载失败');
+            reject(new Error('Mermaid库加载失败'));
+        };
+        
+        // 添加超时处理
+        setTimeout(() => {
+            if (!mermaidLoaded) {
+                reject(new Error('Mermaid库加载超时'));
+            }
+        }, 10000);
     });
 }
 
@@ -351,13 +376,22 @@ export async function renderMermaid(container) {
     
     const mermaidDivs = container.querySelectorAll('.mermaid');
     if (mermaidDivs.length > 0) {
-        await loadMermaid();
         try {
+            await loadMermaid();
             await mermaid.run({
                 nodes: mermaidDivs
             });
         } catch (error) {
             console.error('Mermaid渲染失败:', error);
+            // 如果Mermaid渲染失败，显示原始代码
+            mermaidDivs.forEach(div => {
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.className = 'language-mermaid';
+                code.textContent = div.textContent;
+                pre.appendChild(code);
+                div.parentNode.replaceChild(pre, div);
+            });
         }
     }
 }

@@ -62,6 +62,12 @@ async function loadUtilsModule() {
 async function initApp() {
     console.log('初始化应用...');
     
+    // 显示初始加载提示
+    const initialLoading = document.getElementById('initial-loading');
+    if (initialLoading) {
+        initialLoading.style.display = 'flex';
+    }
+    
     // 初始化 mermaid（如果已加载）
     if (typeof mermaid !== 'undefined') {
         mermaid.initialize({
@@ -79,6 +85,12 @@ async function initApp() {
     if (menuModule) {
         const menuData = await menuModule.generateMenuData();
         setMenuDataCache(menuData);
+        
+        // 隐藏初始加载提示
+        const initialLoading = document.getElementById('initial-loading');
+        if (initialLoading) {
+            initialLoading.style.display = 'none';
+        }
         
         // 渲染主导航
         menuModule.renderMainMenu();

@@ -16,6 +16,7 @@
     <script src="libs/marked.min.js"></script>
     <script src="libs/katex.min.js"></script>
     <script src="libs/auto-render.min.js"></script>
+    <script src="libs/mermaid.min.js"></script>
     <link rel="stylesheet" href="libs/katex.min.css">
 </head>
 <body>
@@ -50,6 +51,12 @@
     <button class="submenu-float-btn" id="submenu-float-btn" title="子菜单">
         <span>☰</span>
     </button>
+
+    <!-- 初始加载提示 -->
+    <div class="initial-loading" id="initial-loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">加载中……</div>
+    </div>
 
     <!-- 加载进度条 -->
     <div class="loading-progress" id="loading-progress">
