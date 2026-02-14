@@ -4,6 +4,32 @@ import { currentFileHeadings, currentFilePath } from './core.js';
 import { cacheUtil, CACHE_CONFIG } from './cache.js';
 import { addHeadingIds, generateId } from './utils.js';
 
+let mermaidLoaded = false;
+
+async function loadMermaid() {
+    if (mermaidLoaded) return;
+    
+    const script = document.createElement('script');
+    script.src = 'libs/mermaid.min.js';
+    document.head.appendChild(script);
+    
+    await new Promise((resolve, reject) => {
+        script.onload = () => {
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: 'default',
+                securityLevel: 'loose',
+                flowchart: { useMaxWidth: true, htmlLabels: true },
+                sequence: { showSequenceNumbers: true },
+                throwOnError: false
+            });
+            mermaidLoaded = true;
+            resolve();
+        };
+        script.onerror = reject;
+    });
+}
+
 // 渲染内容的通用函数
 export async function renderContent(contentArea, markdownText, headingId = '') {
     const mathPlaceholders = [];
@@ -204,12 +230,10 @@ export function renderLaTeX(container) {
 
 // 渲染 Mermaid
 export async function renderMermaid(container) {
-    // 查找所有带有 language-mermaid 类名的 code 元素
     const mermaidElements = container.querySelectorAll('code.language-mermaid');
     
     for (const element of mermaidElements) {
         const code = element.textContent.trim();
-        // 检查是否是有效的 mermaid 代码（以常见的 mermaid 关键字开头）
         const mermaidKeywords = ['graph ', 'flowchart ', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'gantt', 'pie', 'journey', 'gitGraph', 'mindmap', 'timeline'];
         const isMermaidCode = mermaidKeywords.some(keyword => code.startsWith(keyword));
         
@@ -227,7 +251,8 @@ export async function renderMermaid(container) {
     }
     
     const mermaidDivs = container.querySelectorAll('.mermaid');
-    if (mermaidDivs.length > 0 && typeof mermaid !== 'undefined') {
+    if (mermaidDivs.length > 0) {
+        await loadMermaid();
         try {
             await mermaid.run({
                 nodes: mermaidDivs

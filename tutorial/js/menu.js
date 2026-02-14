@@ -219,8 +219,7 @@ export function renderSubMenu(menuKey) {
                 li.setAttribute('data-file', item.file);
                 li.setAttribute('data-heading', heading.id);
                 
-                li.addEventListener('click', function(e) {
-                    e.stopPropagation();
+                li.addEventListener('click', function() {
                     selectSubMenu(item.id, item.file, heading.id, this);
                 });
                 
@@ -239,6 +238,14 @@ export function renderSubMenu(menuKey) {
             // 加载文件内容
             setCurrentSubMenu(item.id);
             loadContent(item.file, '');
+            
+            // 移动端：点击菜单标题后隐藏侧边栏
+            if (window.innerWidth <= 768) {
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.getElementById('overlay');
+                if (sidebar) sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+            }
             
             // 移除其他所有活动状态
             document.querySelectorAll('#sub-menu li').forEach(li => {
@@ -281,6 +288,14 @@ export function selectSubMenu(subMenuId, filePath, headingId, element) {
     element.classList.add('active');
     
     setCurrentSubMenu(subMenuId);
+    
+    // 移动端：点击子菜单后隐藏侧边栏
+    if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('overlay');
+        if (sidebar) sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+    }
     
     // 点击子菜单后自动收回其他展开的菜单
     const allMenuHeaders = document.querySelectorAll('.menu-header');

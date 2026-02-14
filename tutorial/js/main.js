@@ -104,6 +104,7 @@ function initMobileMenu() {
     const mainNav = document.querySelector('.main-nav');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('overlay');
+    const submenuFloatBtn = document.getElementById('submenu-float-btn');
     
     menuToggle.addEventListener('click', function() {
         this.classList.toggle('active');
@@ -122,9 +123,13 @@ function initMobileMenu() {
         overlay.classList.remove('active');
     });
     
+    submenuFloatBtn.addEventListener('click', function() {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    });
+    
     document.getElementById('main-menu').addEventListener('click', async function(e) {
         if (e.target.tagName === 'LI') {
-            // 按需加载菜单模块
             const menuModule = await loadMenuModule();
             if (menuModule) {
                 const menuKey = e.target.getAttribute('data-menu');
@@ -135,13 +140,13 @@ function initMobileMenu() {
                 menuToggle.classList.remove('active');
                 mainNav.classList.remove('active');
                 overlay.classList.remove('active');
+                sidebar.classList.remove('active');
             }
         }
     });
     
     document.getElementById('sub-menu').addEventListener('click', async function(e) {
         if (e.target.tagName === 'LI') {
-            // 按需加载内容模块
             await loadContentModule();
             
             if (window.innerWidth <= 768) {

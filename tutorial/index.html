@@ -12,12 +12,11 @@
     
     <link rel="stylesheet" href="styles.css">
     
-    <!-- 使用国内CDN加速资源加载 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/marked/9.1.6/marked.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.9/katex.min.css">
-    <script src="https://cdn.bootcdn.net/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+    <!-- 库文件本地化部署 -->
+    <script src="libs/marked.min.js"></script>
+    <script src="libs/katex.min.js"></script>
+    <script src="libs/auto-render.min.js"></script>
+    <link rel="stylesheet" href="libs/katex.min.css">
 </head>
 <body>
     <header class="header">
@@ -46,6 +45,11 @@
         <main class="content" id="content-area">
         </main>
     </div>
+
+    <!-- 浮动子菜单按钮（仅移动端显示） -->
+    <button class="submenu-float-btn" id="submenu-float-btn" title="子菜单">
+        <span>☰</span>
+    </button>
 
     <!-- 加载应用模块 -->
     <script type="module" src="js/main.js"></script>
