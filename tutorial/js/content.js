@@ -194,10 +194,12 @@ export async function renderContent(contentArea, markdownText, headingId = '') {
     const htmlContent = marked.parse(protectedMarkdown2);
     
     let processedHtml = htmlContent;
+    
+    processedHtml = processedHtml.replace(/<table>/g, '<div class="table-container"><table>');
+    processedHtml = processedHtml.replace(/<\/table>/g, '</table></div>');
+    
     mathPlaceholders.forEach(({ placeholder, original }) => {
-        // 转义占位符中的特殊正则表达式字符
         const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // 对原始公式中的HTML特殊字符进行转义，防止被解析为HTML标签
         const escapedOriginal = original
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
