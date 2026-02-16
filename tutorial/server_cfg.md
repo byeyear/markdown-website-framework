@@ -131,6 +131,10 @@ AuthenticationMethods publickey
 
 # 指定授权密钥文件
 AuthorizedKeysFile .ssh/authorized_keys
+# .ssh权限设置为700
+# .authorized_keys权限设置为600
+# 将putty生成的公钥粘贴进去
+# 不要使用"save public key"保存的文件
 ```
 
 ### 2.2 配置webdeploy用户SFTP访问
