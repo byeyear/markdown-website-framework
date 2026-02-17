@@ -106,7 +106,20 @@ ls -ld /var/www/html
 
 ## 二、SSH安全配置
 
-### 2.1 禁止root登录
+### 2.1 Ubuntu版本差异说明
+
+#### Ubuntu 22.04及之前版本
+- SSH服务由`sshd`直接管理
+- 端口配置在`/etc/ssh/sshd_config`文件中修改`Port`参数
+
+#### Ubuntu 22.10及之后版本
+- 从Ubuntu 22.10开始，SSH采用`ssh.socket`进行socket激活监听
+- `sshd_config`中的`Port`或`ListenAddress`选项不再生效
+- 端口配置需要通过修改systemd socket配置文件
+
+**注意：** 以下配置方法适用于Ubuntu 22.04。对于Ubuntu 24.04，请参考2.5节的特殊配置。
+
+### 2.2 禁止root登录
 
 编辑SSH配置文件：
 
@@ -137,7 +150,7 @@ AuthorizedKeysFile .ssh/authorized_keys
 # 不要使用"save public key"保存的文件
 ```
 
-### 2.2 配置webdeploy用户SFTP访问
+### 2.3 配置webdeploy用户SFTP访问
 
 在 `/etc/ssh/sshd_config` 文件末尾添加：
 
@@ -168,7 +181,7 @@ Match User webdeploy
 - `/var/www/html` 是用户可写目录，`webdeploy:www-data` 所有者，权限770
 - 用户登录后会看到 `/html` 作为根目录
 
-### 2.3 验证SSH配置
+### 2.4 验证SSH配置
 
 ```bash
 # 测试配置文件语法
@@ -181,7 +194,75 @@ sudo systemctl restart sshd
 sudo systemctl status sshd
 ```
 
-### 2.4 测试登录
+### 2.5 Ubuntu 24.04 SSH端口配置（特殊配置）
+
+对于Ubuntu 22.10及之后版本，由于使用`ssh.socket`进行socket激活，需要采用不同的端口配置方法：
+
+#### 方法一：修改ssh.socket配置（推荐）
+
+```bash
+# 1. 创建或编辑socket配置文件
+sudo mkdir -p /etc/systemd/system/ssh.socket.d
+sudo nano /etc/systemd/system/ssh.socket.d/addresses.conf
+```
+
+添加以下内容（修改端口号）：
+```ini
+[Socket]
+ListenStream=2022
+# 可以添加多个监听端口
+# ListenStream=2023
+```
+
+```bash
+# 2. 重载systemd配置
+sudo systemctl daemon-reload
+
+# 3. 重启ssh.socket服务
+sudo systemctl restart ssh.socket
+
+# 4. 验证端口监听
+sudo netstat -tlnp | grep ssh
+# 应该显示监听在2022端口
+```
+
+#### 方法二：停用ssh.socket，使用传统sshd服务
+
+如果希望使用传统的配置方式，可以停用socket激活：
+
+```bash
+# 1. 停止并禁用ssh.socket
+sudo systemctl stop ssh.socket
+sudo systemctl disable ssh.socket
+
+# 2. 启用并启动ssh服务
+sudo systemctl enable sshd
+sudo systemctl start sshd
+
+# 3. 此时可以按传统方式修改sshd_config
+sudo nano /etc/ssh/sshd_config
+# 修改Port参数
+Port 2022
+
+# 4. 重启ssh服务
+sudo systemctl restart ssh
+```
+
+#### 验证配置
+
+```bash
+# 查看当前使用的SSH服务
+sudo systemctl status ssh
+sudo systemctl status ssh.socket
+
+# 验证端口监听
+sudo netstat -tlnp | grep ssh
+
+# 测试新端口连接
+ssh -p 2022 admin@your-server-ip
+```
+
+### 2.6 测试登录
 
 #### 测试管理员账户（密钥登录）
 
